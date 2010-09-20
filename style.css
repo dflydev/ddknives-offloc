@@ -1,0 +1,19 @@
+/*
+Theme Name: Offloc (ddKnives)
+Theme URI: http://dflydev.com/d2code/wordpress/ddknives
+Description: Offloc's WordPress Theme. Based on ddKnives.
+Author: dflydev
+Template: ddknives
+Version: 0.1
+*/
+
+#site-title span a {
+	display: block;
+	margin-bottom: 16px;
+	text-indent: -90000px;
+	width: 143px;
+	height: 37px;
+	background-image: url(offloc.png);
+	margin-left: 0px;
+}
+#site-description { display: none; }
