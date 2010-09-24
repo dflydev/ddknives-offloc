@@ -17,3 +17,7 @@ Version: 0.1
 	margin-left: 0px;
 }
 #site-description { display: none; }
+#content {
+	font-family: sans-serif;
+	color: #555;
+}
