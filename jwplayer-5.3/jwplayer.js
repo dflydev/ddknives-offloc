@@ -25,12 +25,12 @@ jwplayer.utils.typeOf = function(value) {
 jwplayer.utils.extend = function() {
 	var args = jwplayer.utils.extend['arguments'];
 	if (args.length > 1) {
-		for (var i=1; i < args.length; i++){
+		for (var i = 1; i < args.length; i++) {
 			for (element in args[i]) {
 				args[0][element] = args[i][element];
 			}
 		}
-		return args[0];		
+		return args[0];
 	}
 	return null;
 };
@@ -52,18 +52,18 @@ jwplayer.utils.wrap = function(originalElement, appendedElement) {
 };
 
 /** Loads an XML file into a DOM object **/
-jwplayer.utils.ajax = function(xmldocpath, completecallback, errorcallback){
+jwplayer.utils.ajax = function(xmldocpath, completecallback, errorcallback) {
 	var xmlhttp;
-	if (window.XMLHttpRequest){
-	// IE>7, Firefox, Chrome, Opera, Safari
+	if (window.XMLHttpRequest) {
+		// IE>7, Firefox, Chrome, Opera, Safari
 		xmlhttp = new XMLHttpRequest();
 	} else {
-	// IE6
+		// IE6
 		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
 	}
 	xmlhttp.onreadystatechange = function() {
-		if (xmlhttp.readyState === 4){
-			if (xmlhttp.status === 200){
+		if (xmlhttp.readyState === 4) {
+			if (xmlhttp.status === 200) {
 				if (completecallback) {
 					completecallback(xmlhttp);
 				}
@@ -74,16 +74,16 @@ jwplayer.utils.ajax = function(xmldocpath, completecallback, errorcallback){
 			}
 		}
 	};
-	xmlhttp.open("GET", xmldocpath, false);
-	xmlhttp.send();
+	xmlhttp.open("GET", xmldocpath, true);
+	xmlhttp.send(null);
 	return xmlhttp;
 };
 
 /** Loads a file **/
-jwplayer.utils.load = function(domelement, completecallback, errorcallback){
+jwplayer.utils.load = function(domelement, completecallback, errorcallback) {
 	domelement.onreadystatechange = function() {
-		if (domelement.readyState === 4){
-			if (domelement.status === 200){
+		if (domelement.readyState === 4) {
+			if (domelement.status === 200) {
 				if (completecallback) {
 					completecallback();
 				}
@@ -97,7 +97,7 @@ jwplayer.utils.load = function(domelement, completecallback, errorcallback){
 };
 
 /** Finds tags in a DOM, returning a new DOM **/
-jwplayer.utils.find = function(dom, tag){
+jwplayer.utils.find = function(dom, tag) {
 	return dom.getElementsByTagName(tag);
 };
 
@@ -109,15 +109,24 @@ jwplayer.utils.append = function(originalElement, appendedElement) {
 };
 
 /**
- * Detects whether the current browser is IE.
- * Technique from http://webreflection.blogspot.com/2009/01/32-bytes-to-know-if-your-browser-is-ie.html 
+ * Detects whether the current browser is IE (version 8 or below).
+ * Technique from http://webreflection.blogspot.com/2009/01/32-bytes-to-know-if-your-browser-is-ie.html
+ * Note - this detection no longer works for IE9.
  **/
 jwplayer.utils.isIE = function() {
 	return (!+"\v1");
 };
 
 /**
- * Detects whether the browser can handle HTML5 video. 
+ * Detects whether the current browser is mobile Safari.
+ **/
+jwplayer.utils.isIOS = function() {
+	var agent = navigator.userAgent.toLowerCase();
+	return (agent.match(/iP(hone|ad)/i) !== null);
+};
+
+/**
+ * Detects whether the browser can handle HTML5 video.
  * Using this as a proxy for detecting all HTML5 features needed for the JW HTML5 Player.  Do we need more granularity?
  */
 jwplayer.utils.hasHTML5 = function() {
@@ -130,7 +139,8 @@ jwplayer.utils.hasHTML5 = function() {
  */
 jwplayer.utils.hasFlash = function() {
 	return (typeof navigator.plugins != "undefined" && typeof navigator.plugins['Shockwave Flash'] != "undefined") || (typeof window.ActiveXObject != "undefined");
-};/**
+};
+/**
  * Parser for the JW Player.
  *
  * @author zach
@@ -210,19 +220,22 @@ jwplayer.utils.hasFlash = function() {
 	function parseMediaElement(domElement, attributes) {
 		attributes = getAttributeList('media', attributes);
 		var sources = [];
-		if (!(navigator.plugins && navigator.mimeTypes && navigator.mimeTypes.length)){
+		if (jwplayer.utils.isIE()) {
 			// IE6/7/8 case
 			var currentElement = domElement.nextSibling;
-			if (currentElement[0] !== undefined){
-				while(currentElement[0].tagName.toLowerCase() == "source") {
-					sources.push(parseSourceElement(currentElement[0]));
+			if (currentElement !== undefined){
+				while(currentElement.tagName.toLowerCase() == "source") {
+					sources.push(parseSourceElement(currentElement));
 					currentElement = currentElement.nextSibling;
 				}				
 			}
 		} else {
-			var sourceTags = jwplayer.utils.selectors.getElementsByTagAndClass("source", "", domElement);
+			//var sourceTags = domElement.getElementsByTagName("source");
+			var sourceTags = jwplayer.utils.selectors("source", domElement);
 			for (var i in sourceTags) {
-				sources.push(parseSourceElement(sourceTags[i]));
+				if (!isNaN(i)){
+					sources.push(parseSourceElement(sourceTags[i]));					
+				}
 			}
 		}
 		var configuration = parseElement(domElement, attributes);
@@ -249,6 +262,36 @@ jwplayer.utils.hasFlash = function() {
 		return result;
 	}
 	
+	/** For IE browsers, replacing a media element's contents isn't possible, since only the start tag 
+	 * is matched by document.getElementById.  This method traverses the elements siblings until it finds 
+	 * the closing tag.  If it can't find one, it will not remove the element's siblings.
+	 * 
+	 * @param toReplace The media element to be replaced
+	 * @param html The replacement HTML code (string)
+	 **/
+	jwplayer.utils.mediaparser.replaceMediaElement = function(toReplace, html) {
+		if (jwplayer.utils.isIE()) {
+			var endTagFound = false;
+			var siblings = [];
+			var currentSibling = toReplace.nextSibling;
+			while (currentSibling && !endTagFound) {
+				siblings.push(currentSibling);
+				currentSibling = currentSibling.nextSibling;
+				if (currentSibling.nodeType == 1 && currentSibling.tagName.toLowerCase() == ("/")+toReplace.tagName.toLowerCase() ) {
+					endTagFound = true;
+				}
+			}
+			if (endTagFound) {
+				while (siblings.length > 0) {
+					var element = siblings.pop();
+					element.parentNode.removeChild(element);
+				}
+			}
+			
+			toReplace.outerHTML = html;
+		}
+	};
+	
 	parsers.media = parseMediaElement;
 	parsers.audio = parseMediaElement;
 	parsers.source = parseSourceElement;
@@ -256,14 +299,17 @@ jwplayer.utils.hasFlash = function() {
 	
 	
 })(jwplayer);
-jwplayer.utils.selectors = function(selector){
+jwplayer.utils.selectors = function(selector, parent){
+	if (parent === undefined) {
+		parent = document;
+	}
 	selector = jwplayer.utils.strings.trim(selector);
 	var selectType = selector.charAt(0);
 	if (selectType == "#"){
-		return document.getElementById(selector.substr(1));
+		return parent.getElementById(selector.substr(1));
 	} else if (selectType == "."){
-		if (document.getElementsByClassName) {
-			return document.getElementsByClassName(selector.substr(1));
+		if (parent.getElementsByClassName) {
+			return parent.getElementsByClassName(selector.substr(1));
 		} else {
 			return jwplayer.utils.selectors.getElementsByTagAndClass("*", selector.substr(1));
 		}
@@ -272,7 +318,7 @@ jwplayer.utils.selectors = function(selector){
 			selectors = selector.split(".");
 			return jwplayer.utils.selectors.getElementsByTagAndClass(selectors[0], selectors[1]);
 		} else {
-			return document.getElementsByTagName(selector);
+			return parent.getElementsByTagName(selector);
 		}
 	}
 	return null;
@@ -470,7 +516,9 @@ jwplayer.utils.strings.trim = function(inputString){
 		this.destroy = function() {
 			_listeners = {};
 			_queuedCalls = [];
-			jwplayer.api.destroyPlayer(this.id, _originalHTML); 
+			if (this.container.outerHTML != _originalHTML){
+				jwplayer.api.destroyPlayer(this.id, _originalHTML);	
+			}
 		};
 		
 
@@ -731,7 +779,7 @@ playerReady = function(obj) {
 						this.api.setPlayer(flashPlayer);
 					} else {
 						this.players.splice(0, 1);
-						this.embedPlayer();
+						return this.embedPlayer();
 					}
 					break;
 				case 'html5':
@@ -741,7 +789,7 @@ playerReady = function(obj) {
 						this.api.setPlayer(html5player);
 					} else {
 						this.players.splice(0, 1);
-						this.embedPlayer();
+						return this.embedPlayer();
 					}
 					break;
 				}
@@ -755,9 +803,9 @@ playerReady = function(obj) {
 		},
 
 		setupEvents : function() {
-			for (event in this.events) {
-				if (typeof this.api[event] == "function") {
-					(this.api[event]).call(this.api, this.events[event]);
+			for (evt in this.events) {
+				if (typeof this.api[evt] == "function") {
+					(this.api[evt]).call(this.api, this.events[evt]);
 				}
 			}
 		},
@@ -768,12 +816,11 @@ playerReady = function(obj) {
 					this.load(loadParams.playlist);
 				} else if (loadParams.levels) {
 					var item = this.getPlaylistItem(0);
-					console.log("Item: %o", item);
 					if (!item) {
-						item = { file: loadParams.levels[0].file };
+						item = { file: loadParams.levels[0].file, provider:'video' };
 					}
 					if (!item.image) {
-						item.image = this.config.image;
+						item.image = loadParams.image;
 					}
 					item.levels = loadParams.levels;
 					this.load(item);
@@ -837,7 +884,11 @@ playerReady = function(obj) {
 			html += '<param name="flashvars" value="' + jwplayer.embed
 					.jsonToFlashvars(params) + '">';
 			html += '</object>';
-			_container.outerHTML = html;
+			if (_container.tagName.toLowerCase() == "video") {
+				jwplayer.utils.mediaparser.replaceMediaElement(_container, html);
+			} else {
+				_container.outerHTML = html;
+			}
 			return document.getElementById(_container.id);
 		} else {
 			var obj = document.createElement('object');
@@ -924,7 +975,7 @@ playerReady = function(obj) {
 	};
 
 	jwplayer.api.PlayerAPI.prototype.setup = function(options, players) {
-		if (options['flashplayer'] && !options['players']) {
+		if (options && options['flashplayer'] && !options['players']) {
 			options['players'] = [{type:'flash', src:options['flashplayer']},{type:'html5'}];
 			delete options['flashplayer'];
 		}
@@ -946,4 +997,19 @@ playerReady = function(obj) {
 		return (new jwplayer.embed.Embedder(newApi)).embedPlayer();
 	};
 
+	function noviceEmbed() {
+		if (!document.body) {
+			return setTimeout(noviceEmbed, 15);
+		}
+		var videoTags = jwplayer.utils.selectors.getElementsByTagAndClass('video','jwplayer');
+		for (var i=0; i<videoTags.length; i++) {
+			var video = videoTags[i];
+			jwplayer(video.id).setup({
+				players: [{type:'flash', src:'/jwplayer/player.swf'},{type:'html5'}]
+			});
+		}
+	}
+	noviceEmbed();
+	
+	
 })(jwplayer);
