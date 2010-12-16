@@ -9,10 +9,10 @@ Version: 0.1
 
 #site-title span a {
 	display: block;
-	margin-bottom: 16px;
+	margin-bottom: 21px;
 	text-indent: -90000px;
-	width: 143px;
-	height: 37px;
+	width: 105px;
+	height: 27px;
 	background-image: url(offloc.png);
 	margin-left: 0px;
 }
